@@ -1,17 +1,34 @@
-import { init_epc_server } from './utils.mjs'
+import { get_emacs_var, init_epc_server } from "./utils.mjs";
+import { initMarkdownEngine } from "./markdown-engine.mjs";
 
 class MdPreview {
-    constructor() {
-        init_epc_server().then(epc_client => {
-            epc_client.defineMethod('echo', (...args) => {
-                return args;
-            });
-        });
+  constructor() {
+      Promise.all([
+          this.init(),
+          this.initEngine(),
+      ]).then(this.initSuccess)
+  }
+
+  async init() {
+    const client = await init_epc_server();
+    client.defineMethod("echo", this.echo);
+  }
+
+  async initEngine() {
+    this.engine = await initMarkdownEngine();
+  }
+
+    async initSuccess() {
+        await get_emacs_var()
     }
+
+  echo(...args) {
+    return args;
+  }
 }
 
 function main() {
-    new MdPreview();
+  new MdPreview();
 }
 
-main()
+main();

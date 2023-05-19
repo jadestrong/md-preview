@@ -34,7 +34,9 @@
 
 (defvar md-preview-node-file (expand-file-name "md_preview.mjs" (if load-file-name
                                                                     (file-name-directory load-file-name)
-                                                                  default-directory)))
+(defun md-preview--is-dark-theme ()
+  "Return t if the current Emacs theme is a dark theme."
+  (eq (frame-parameter nil 'background-mode) 'dark))
 
 (defvar md-preview-server-port nil)
 
@@ -66,6 +68,9 @@
 ;;         (setq md-preview-server-port (process-contact md-preview-server :service))
 ;;       (error "[Md-Preview] md-preview-server failed to start")))
 ;;   md-preview-server)
+
+(defun md-preview--get-emacs-func-result-func (sexp-string)
+  (eval (read sexp-string)))
 
 (defun md-preview--eval-in-emacs-func (sexp-string)
   (eval (read sexp-string))
