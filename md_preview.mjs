@@ -1,5 +1,6 @@
 import process from "node:process";
 import {
+  eval_in_emacs,
   get_emacs_func_result,
   init_epc_server,
   message_emacs,
@@ -8,6 +9,7 @@ import { MarkdownPreview } from "./markdown-engine.mjs";
 
 class MdPreview {
   constructor() {
+    this.darkMode = true;
     Promise.all([this.init(), this.initEngine()]).then(this.initedSuccess);
   }
 
@@ -16,19 +18,27 @@ class MdPreview {
     client.defineMethod("echo", (...args) => {
       return args;
     });
+    client.defineMethod("preview", this.preview);
   }
 
   async initEngine() {
     this.engine = new MarkdownPreview();
   }
-  async initedSuccess() {
+  initedSuccess = async () => {
     const darkMode = await get_emacs_func_result("md-preview--is-dark-theme");
-      // update config
-  }
+    this.darkMode = darkMode;
+  };
 
   echo(...args) {
     return args;
   }
+
+  preview = async (inputFile) => {
+    message_emacs("start preview " + inputFile);
+    const outputFile = await this.engine.render(inputFile, this.darkMode);
+    message_emacs("end preview " + outputFile);
+    eval_in_emacs("md-preview-show-preview-window", outputFile);
+  };
 }
 
 function main() {
@@ -38,7 +48,12 @@ function main() {
 main();
 
 process.on("uncaughtException", (err) => {
-  message_emacs("uncaughtException", err.stack);
+  try {
+    message_emacs("uncaughtException", err.stack);
+  } catch (e) {
+    console.log("e", e);
+  }
+  console.log("uncaught exception err", err);
 });
 
 process.on("unhandledRejection", (reason, p) => {
@@ -47,4 +62,5 @@ process.on("unhandledRejection", (reason, p) => {
   } else {
     message_emacs("UnhandleRejection: " + JSON.stringify(reason));
   }
+  console.log("unhandledRejection err", reason, p);
 });

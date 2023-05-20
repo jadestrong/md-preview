@@ -1,7 +1,9 @@
 import path from "node:path";
 import os from "node:os";
+import fs from 'node:fs';
 import crypto from "node:crypto";
 import * as mume from "@shd101wyy/mume";
+import { message_emacs } from "./utils.mjs";
 
 function readFile(file) {
   return new Promise((resolve, reject) => {
@@ -27,7 +29,7 @@ function writeFile(file, text, options = null) {
 
 export class MarkdownPreview {
   constructor() {
-    const configPath = path.resolve(os.homedir(), ".mume");
+    const configPath = this.configPath = path.resolve(os.homedir(), ".mume");
     /** @type {{[key: string]: mume.MarkdownEngine}} */
     this.enginesMap = {};
     /** @type {{[key: string]: string}}*/
@@ -46,7 +48,7 @@ export class MarkdownPreview {
       engine = new mume.MarkdownEngine({
         filePath,
         config: {
-          configPath,
+          configPath: this.configPath,
           previewTheme: darkMode ? "atom-dark.css" : "atom-light.css",
           mermaidTheme: darkMode ? "dark" : "forest",
           codeBlockTheme: darkMode ? "atom-dark.css" : "atom-light.css",
@@ -71,21 +73,20 @@ export class MarkdownPreview {
       isForPreview: false,
       runAllCodeChunks: true,
     });
-
     html = await engine.generateHTMLTemplateForExport(html, yamlConfig, {
       isForPrince: false,
       isForPrint: false,
       offline: true,
       embedLocalImages: false,
     });
-    let outputFile = this.outputFileMap(inputFile);
-    if (!hash) {
-      const hash = crypto.createHash("sha256").update(inputFile).digest("hex");
+    let outputFile = this.outputFileMap[inputFile];
+    if (!outputFile) {
+      const hash = crypto.createHash("sha256").update(inputFile).digest("hex").slice(0, 8);
       outputFile = path.resolve(os.tmpdir(), `md-preview-${hash}.html`);
       this.outputFileMap[inputFile] = outputFile;
     }
 
     await writeFile(outputFile, html);
-    return outputFile;
+    return `file:///${outputFile}`;
   }
 }

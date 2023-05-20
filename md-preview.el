@@ -177,13 +177,18 @@ Then Md-Preview will start by gdb, please send new issue with `*md-preview*' buf
     (setq md-preview-process nil)
     (message "[Md-Preview] Process terminated.")))
 
-
-(defun md-preview-test ()
+(defun md-preview ()
+  "Preview current buffer."
   (interactive)
-  (deferred:$
-   (md-preview-call-async "echo" (buffer-name))
-   (deferred:nextc it
-                   (lambda (x) (message "Return : %S" x)))))
+  (let* ((file-path (buffer-file-name)))
+    (md-preview-call-async "preview" file-path)))
+
+(defun md-preview-show-preview-window (file-path)
+  "Preview the FILE-PATH in other window."
+  (delete-other-windows)
+  (split-window-horizontally)
+  (other-window 1)
+  (xwidget-webkit-browse-url file-path))
 
 (provide 'md-preview)
 ;;; md-preview.el ends here
