@@ -29,7 +29,6 @@ function writeFile(file: string  | number |Buffer | URL, text: any, options: fs.
 
 async function render(inputFile: string, outputFile: string, darkMode: boolean) {
   const configPath = path.resolve(os.homedir(), '.mume');
-  console.log('mume', mume);
   await mume.init(configPath);
 
   const engine = new mume.MarkdownEngine({

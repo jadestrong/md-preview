@@ -40,7 +40,6 @@ export async function message_emacs(message) {
 
 export function convert_emacs_bool(symbol_value, symbol_is_boolean) {
     if (symbol_is_boolean == 't') {
-        // TODO 如果是 boolean 类型，则返回 boolean
         return symbol_value === 't';
     } else {
         return symbol_value;
@@ -56,6 +55,7 @@ export async function get_emacs_vars(args) {
 
 export async function get_emacs_var(var_name) {
     const result = await epc_client.callMethod('get-emacs-var', var_name);
+    message_emacs("resutl", result)
     if (!result) {
         throw new Error(`[MD_PREVIEW] no such variable: ${var_name}`);
     }
@@ -64,6 +64,8 @@ export async function get_emacs_var(var_name) {
 }
 
 export async function get_emacs_func_result(method_name, ...args) {
-    const result = await epc_client.callMethod(method_name, ...args)
-    return result;
+    const _args = [symbol(method_name), ...(args.map(handle_arg_types))];
+    const sexp = encode(_args);
+    const result = await epc_client.callMethod('get-emacs-func-result', [sexp])
+    return result === 't' ? true : result;
 }
