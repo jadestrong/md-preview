@@ -16,7 +16,6 @@
 ;;; Commentary:
 ;;
 ;;
-;;
 ;;; Code:
 (require 'cl-lib)
 (require 'json)
@@ -203,7 +202,8 @@ Then Md-Preview will start by gdb, please send new issue with `*md-preview*' buf
          (md-preview-call-async "open" url)
          (deferred:nextc it (lambda (preview-url)
                               (delete-other-windows)
-                              (xwidget-webkit-browse-url preview-url)))))
+                              (xwidget-webkit-browse-url preview-url)))
+         (message "opened.")))
     (error "Invalid file %s" url)))
 
 
