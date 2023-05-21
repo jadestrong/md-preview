@@ -190,5 +190,22 @@ Then Md-Preview will start by gdb, please send new issue with `*md-preview*' buf
   (other-window 1)
   (xwidget-webkit-browse-url file-path))
 
+
+(defun md-preview-open (url)
+  "Open md file URL and preview it."
+  (interactive "G[MD] Open: ")
+  (if-let* ((url (expand-file-name url))
+            (extension-name (downcase (file-name-extension url)))
+            ((string= extension-name "md")))
+      (progn
+        (message "opening...")
+        (deferred:$
+         (md-preview-call-async "open" url)
+         (deferred:nextc it (lambda (preview-url)
+                              (delete-other-windows)
+                              (xwidget-webkit-browse-url preview-url)))))
+    (error "Invalid file %s" url)))
+
+
 (provide 'md-preview)
 ;;; md-preview.el ends here

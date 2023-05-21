@@ -19,6 +19,7 @@ class MdPreview {
       return args;
     });
     client.defineMethod("preview", this.preview);
+    client.defineMethod("open", this.open);
   }
 
   async initEngine() {
@@ -34,10 +35,13 @@ class MdPreview {
   }
 
   preview = async (inputFile) => {
-    message_emacs("start preview " + inputFile);
     const outputFile = await this.engine.render(inputFile, this.darkMode);
-    message_emacs("end preview " + outputFile);
     eval_in_emacs("md-preview-show-preview-window", outputFile);
+  };
+
+  open = async (inputFile) => {
+    const outputFile = await this.engine.render(inputFile, this.darkMode);
+    return outputFile;
   };
 }
 
