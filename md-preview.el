@@ -206,6 +206,15 @@ Then Md-Preview will start by gdb, please send new issue with `*md-preview*' buf
          (message "opened.")))
     (error "Invalid file %s" url)))
 
+(defun md-preview-show-in-current-window ()
+  "Preview current buffer in current window."
+  (interactive)
+  (let* ((input-file (buffer-file-name)))
+     (deferred:$
+      (md-preview-call-async "open" input-file)
+      (deferred:nextc it (lambda (preview-url)
+                           (xwidget-webkit-browse-url preview-url))))))
+
 
 (provide 'md-preview)
 ;;; md-preview.el ends here
