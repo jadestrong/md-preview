@@ -20,13 +20,11 @@
 (require 'cl-lib)
 (require 'json)
 (require 'map)
-(require 'seq)
-(require 'subr-x)
-;; (require 'md-preview-epc)
 (require 'epc)
+(require 'deferred)
 
 (defvar md-preview-process nil
-  "The Md-Preview Process.")
+  "The MD-PREVIEW Process.")
 
 (defvar md-preview-node-file (expand-file-name "md_preview.mjs" (if load-file-name
                                                                     (file-name-directory load-file-name)
@@ -78,17 +76,19 @@
 ;; (defvar md-preview-internal-process-args nil)
 
 (defcustom md-preview-name "*md-preview*"
-  "Name of Md-Preview buffer."
-  :type 'string)
+  "Name of MD-PREVIEW buffer."
+  :type 'string
+  :group 'md-preview)
 
 (defcustom md-preview-node-command "node"
   "The Python interpreter used to run md_preview.js."
-  :type 'string)
+  :type 'string
+  :group 'md-preview)
 
-(defcustom md-preview-enable-debug nil
-  "If you got segfault error, please turn this option.
-Then Md-Preview will start by gdb, please send new issue with `*md-preview*' buffer content when next crash."
-  :type 'boolean)
+;; (defcustom md-preview-enable-debug nil
+;;   "If you got segfault error, please turn this option.
+;; Then MD-PREVIEW will start by gdb, please send new issue with `*md-preview*' buffer content when next crash."
+;;   :type 'boolean)
 
 ;; (defcustom md-preview-enable-profile nil
 ;;   "Enable this option to output performance data to ~/md-preview.prof."
@@ -127,33 +127,36 @@ Then Md-Preview will start by gdb, please send new issue with `*md-preview*' buf
     (md-preview-start-process)))
 
 (defun md-preview-restart-process ()
-  "Stop and restart Md-Preview process."
+  "Stop and restart MD-PREVIEW process."
   (interactive)
   (setq md-preview-is-starting nil)
 
   (md-preview-kill-process)
   (md-preview-start-process)
-  (message "[Md-Preview] Process restarted."))
+  (message "[MD-PREVIEW] Process restarted."))
 
 (defun md-preview-start-process ()
-  "Start Md-Preview process if it isn't started."
+  "Start MD-PREVIEW process if it isn't started."
   (setq md-preview-is-starting t)
   (unless (epc:live-p md-preview-process)
     (md-preview--start-epc)
     (setq md-preview-is-starting nil)
-    (when (and md-preview-first-call-method
-               md-preview-first-call-args)
-      (deferred:$
-       (epc:call-deferred md-preview-process
-                          (read md-preview-first-call-method)
-                          md-preview-first-call-args)
-       (setq md-preview-first-call-method nil)
-       (setq md-preview-first-call-args nil)))))
+    (if (and md-preview-first-call-method
+             md-preview-first-call-args)
+        (deferred:$
+         (epc:call-deferred md-preview-process
+                            (read md-preview-first-call-method)
+                            md-preview-first-call-args)
+         (deferred:nextc it (lambda (result)
+                              (setq md-preview-first-call-method nil)
+                              (setq md-preview-first-call-args nil)
+                              result)))
+      (deferred:succeed))))
 
 (defvar md-preview-stop-process-hook nil)
 
 (defun md-preview-kill-process ()
-  "Stop Md-Preview process and kill all Md-Preview buffers."
+  "Stop MD-PREVIEW process and kill all MD-PREVIEW buffers."
   (interactive)
   ;; Run stop process hooks.
   (run-hooks 'md-preview-stop-process-hook)
@@ -164,17 +167,19 @@ Then Md-Preview will start by gdb, please send new issue with `*md-preview*' buf
 (add-hook 'kill-emacs-hook #'md-preview-kill-process)
 
 (defun md-preview--kill-node-process ()
-  "Kill Md-Preview background python process."
+  "Kill MD-PREVIEW background python process."
   (when (epc:live-p md-preview-process)
-    ;; Cleanup before exit Md-Preview server process.
+    ;; Cleanup before exit MD-PREVIEW server process.
     (md-preview-call-async "cleanup")
-    ;; Delete Md-Preview server process.
+    ;; Delete MD-PREVIEW server process.
     (epc:stop-epc md-preview-process)
     ;; Kill *md-preview* buffer.
     (when (get-buffer md-preview-name)
       (kill-buffer md-preview-name))
     (setq md-preview-process nil)
-    (message "[Md-Preview] Process terminated.")))
+    (message "[MD-Preview] Process terminated.")))
+
+;;;; methods
 
 (defun md-preview ()
   "Preview current buffer."
@@ -210,10 +215,10 @@ Then Md-Preview will start by gdb, please send new issue with `*md-preview*' buf
   "Preview current buffer in current window."
   (interactive)
   (let* ((input-file (buffer-file-name)))
-     (deferred:$
-      (md-preview-call-async "open" input-file)
-      (deferred:nextc it (lambda (preview-url)
-                           (xwidget-webkit-browse-url preview-url))))))
+    (deferred:$
+     (md-preview-call-async "open" input-file)
+     (deferred:nextc it (lambda (preview-url)
+                          (xwidget-webkit-browse-url preview-url))))))
 
 
 (provide 'md-preview)
