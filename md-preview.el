@@ -23,7 +23,7 @@
 (require 'epc)
 (require 'deferred)
 
-(defvar md-preview-process nil
+(defvar md-preview-internal-process nil
   "The MD-PREVIEW Process.")
 
 (defvar md-preview-node-file (expand-file-name "md_preview.mjs" (if load-file-name
@@ -69,12 +69,6 @@
   "Get VARS and return values."
   (mapcar #'md-preview--get-emacs-var-func vars))
 
-;; (defvar md-preview-epc-process nil)
-
-(defvar md-preview-internal-process nil)
-;; (defvar md-preview-internal-process-prog nil)
-;; (defvar md-preview-internal-process-args nil)
-
 (defcustom md-preview-name "*md-preview*"
   "Name of MD-PREVIEW buffer."
   :type 'string
@@ -84,15 +78,6 @@
   "The Python interpreter used to run md_preview.js."
   :type 'string
   :group 'md-preview)
-
-;; (defcustom md-preview-enable-debug nil
-;;   "If you got segfault error, please turn this option.
-;; Then MD-PREVIEW will start by gdb, please send new issue with `*md-preview*' buffer content when next crash."
-;;   :type 'boolean)
-
-;; (defcustom md-preview-enable-profile nil
-;;   "Enable this option to output performance data to ~/md-preview.prof."
-;;   :type 'boolean)
 
 (defun md-preview--user-emacs-directory ()
   "Get lang server with project path, file path or file extension."
@@ -104,24 +89,23 @@
 
 (defun md-preview--start-epc ()
   "Function to start the EPC."
-  (unless (epc:live-p md-preview-process)
-    (setq md-preview-process (epc:start-epc
+  (unless (epc:live-p md-preview-internal-process)
+    (setq md-preview-internal-process (epc:start-epc
                               md-preview-node-command
                               (list md-preview-node-file)))
-    (epc:define-method md-preview-process 'eval-in-emacs 'md-preview--eval-in-emacs-func)
-    (epc:define-method md-preview-process 'get-emacs-var 'md-preview--get-emacs-var-func)
-    (epc:define-method md-preview-process 'get-emacs-vars 'md-preview--get-emacs-vars-func)
-    (epc:define-method md-preview-process 'get-user-emacs-directory 'md-preview--user-emacs-directory)
-    (epc:define-method md-preview-process 'get-emacs-func-result 'md-preview--get-emacs-func-result-func))
-  md-preview-process)
+    (epc:define-method md-preview-internal-process 'eval-in-emacs 'md-preview--eval-in-emacs-func)
+    (epc:define-method md-preview-internal-process 'get-emacs-var 'md-preview--get-emacs-var-func)
+    (epc:define-method md-preview-internal-process 'get-emacs-vars 'md-preview--get-emacs-vars-func)
+    (epc:define-method md-preview-internal-process 'get-user-emacs-directory 'md-preview--user-emacs-directory)
+    (epc:define-method md-preview-internal-process 'get-emacs-func-result 'md-preview--get-emacs-func-result-func))
+  md-preview-internal-process)
 
 
 (defun md-preview-call-async (method &rest args)
   "Call NODE EPC function METHOD and ARGS asynchronously."
-  (if (epc:live-p md-preview-process)
+  (if (epc:live-p md-preview-internal-process)
       (deferred:$
-       (epc:call-deferred md-preview-process (read method) args))
-    ;; (error "[MD-PREVIEW] md-preview-process not live!")
+       (epc:call-deferred md-preview-internal-process (read method) args))
     (setq md-preview-first-call-method method)
     (setq md-preview-first-call-args args)
     (md-preview-start-process)))
@@ -138,13 +122,13 @@
 (defun md-preview-start-process ()
   "Start MD-PREVIEW process if it isn't started."
   (setq md-preview-is-starting t)
-  (unless (epc:live-p md-preview-process)
+  (unless (epc:live-p md-preview-internal-process)
     (md-preview--start-epc)
     (setq md-preview-is-starting nil)
     (if (and md-preview-first-call-method
              md-preview-first-call-args)
         (deferred:$
-         (epc:call-deferred md-preview-process
+         (epc:call-deferred md-preview-internal-process
                             (read md-preview-first-call-method)
                             md-preview-first-call-args)
          (deferred:nextc it (lambda (result)
@@ -168,15 +152,15 @@
 
 (defun md-preview--kill-node-process ()
   "Kill MD-PREVIEW background python process."
-  (when (epc:live-p md-preview-process)
+  (when (epc:live-p md-preview-internal-process)
     ;; Cleanup before exit MD-PREVIEW server process.
     (md-preview-call-async "cleanup")
     ;; Delete MD-PREVIEW server process.
-    (epc:stop-epc md-preview-process)
+    (epc:stop-epc md-preview-internal-process)
     ;; Kill *md-preview* buffer.
     (when (get-buffer md-preview-name)
       (kill-buffer md-preview-name))
-    (setq md-preview-process nil)
+    (setq md-preview-internal-process nil)
     (message "[MD-Preview] Process terminated.")))
 
 ;;;; methods
